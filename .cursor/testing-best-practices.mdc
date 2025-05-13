@@ -1,0 +1,114 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Vitly Testing Best Practices
+
+## Test Types & Coverage
+- Unit Tests: 80% minimum coverage
+- Integration Tests: Critical paths
+- End-to-End Tests: Key user journeys
+- Performance Tests: Response times, load handling
+- Security Tests: OWASP Top 10 vulnerabilities
+- Accessibility Tests: WCAG 2.1 AA compliance
+
+## Unit Testing Standards
+- Use Jest as testing framework
+- Follow TDD principles
+- Write tests before implementation
+- Use proper test naming conventions
+- Follow test organization best practices
+- Use proper mocking techniques
+- Implement proper test isolation
+- Follow test documentation guidelines
+
+## Integration Testing Standards
+- Test API endpoints
+- Test database interactions
+- Test external service integrations
+- Test authentication flows
+- Test authorization rules
+- Test error handling
+- Test data validation
+- Test business logic
+
+## End-to-End Testing Standards
+- Use Cypress for web testing
+- Use Detox for mobile testing
+- Test critical user journeys
+- Test edge cases
+- Test error scenarios
+- Test performance under load
+- Test accessibility features
+- Test cross-platform compatibility
+
+## Performance Testing Standards
+- Test response times
+- Test concurrent users
+- Test resource usage
+- Test database performance
+- Test API performance
+- Test frontend performance
+- Test mobile performance
+- Test network conditions
+
+## Security Testing Standards
+- Test authentication
+- Test authorization
+- Test input validation
+- Test output encoding
+- Test encryption
+- Test session management
+- Test API security
+- Test infrastructure security
+
+## Accessibility Testing Standards
+- Test screen reader compatibility
+- Test keyboard navigation
+- Test color contrast
+- Test focus management
+- Test ARIA labels
+- Test semantic HTML
+- Test responsive design
+- Test assistive technologies
+
+## Test Automation Standards
+- Use CI/CD integration
+- Use proper test runners
+- Use proper test reporting
+- Use proper test documentation
+- Follow test automation best practices
+- Use proper test environments
+- Use proper test data management
+- Follow test maintenance guidelines
+
+## Test Documentation Standards
+- Document test cases
+- Document test results
+- Document test coverage
+- Document test environments
+- Document test dependencies
+- Document test assumptions
+- Document test limitations
+- Document test maintenance
+
+## Test Environment Standards
+- Use proper test environments
+- Use proper test data
+- Use proper test tools
+- Use proper test configurations
+- Follow test environment best practices
+- Use proper test isolation
+- Use proper test cleanup
+- Follow test environment guidelines
+
+## Test Maintenance Standards
+- Keep tests up to date
+- Remove obsolete tests
+- Update test documentation
+- Maintain test coverage
+- Follow test maintenance best practices
+- Use proper test versioning
+- Use proper test review
+- Follow test quality guidelines

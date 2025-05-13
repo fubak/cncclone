@@ -1,0 +1,104 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Vitly Coding Best Practices
+
+## General Principles
+- Follow SOLID principles
+- Write clean, maintainable code
+- Use meaningful variable and function names
+- Keep functions small and focused
+- Document complex logic
+- Follow DRY (Don't Repeat Yourself) principle
+
+## TypeScript/JavaScript Standards
+- Use TypeScript for all new code
+- Enable strict mode
+- Use interfaces for type definitions
+- Avoid `any` type
+- Use proper error handling with try-catch
+- Use async/await for asynchronous operations
+- Use const for immutable variables
+- Use let for mutable variables
+- Avoid var
+
+## React/React Native Standards
+- Use functional components with hooks
+- Follow React Hooks rules
+- Use proper prop types
+- Implement proper error boundaries
+- Use React.memo for performance optimization
+- Follow component composition patterns
+- Use proper state management
+- Implement proper loading states
+- Handle edge cases
+
+## Backend Standards
+- Use proper error handling middleware
+- Implement proper logging
+- Use proper authentication middleware
+- Follow REST API best practices
+- Use proper database transactions
+- Implement proper caching
+- Use proper security headers
+- Follow microservices best practices
+
+## Testing Standards
+- Write unit tests for all new code
+- Use proper test coverage
+- Follow TDD principles
+- Use proper mocking
+- Write integration tests
+- Write end-to-end tests
+- Use proper test naming conventions
+- Follow test organization best practices
+
+## Git Standards
+- Use meaningful commit messages
+- Follow conventional commits
+- Use proper branching strategy
+- Use proper pull request templates
+- Follow code review best practices
+- Use proper git hooks
+- Follow git workflow best practices
+
+## Documentation Standards
+- Document all public APIs
+- Use proper JSDoc comments
+- Keep README up to date
+- Document all environment variables
+- Document all configuration options
+- Keep documentation in sync with code
+- Use proper documentation tools
+
+## Performance Standards
+- Optimize database queries
+- Use proper indexing
+- Implement proper caching
+- Use proper pagination
+- Optimize frontend performance
+- Use proper lazy loading
+- Implement proper code splitting
+- Follow performance best practices
+
+## Security Standards
+- Follow OWASP guidelines
+- Use proper authentication
+- Implement proper authorization
+- Use proper encryption
+- Follow security best practices
+- Use proper input validation
+- Implement proper output encoding
+- Follow security headers best practices
+
+## Accessibility Standards
+- Follow WCAG 2.1 AA guidelines
+- Use proper ARIA labels
+- Implement proper keyboard navigation
+- Use proper color contrast
+- Follow accessibility best practices
+- Use proper semantic HTML
+- Implement proper focus management
+- Follow accessibility testing best practices

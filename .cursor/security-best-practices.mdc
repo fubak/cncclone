@@ -1,0 +1,96 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Vitly Security Best Practices
+
+## Authentication & Authorization
+- Implement OAuth2 with PKCE for all clients
+- Use short-lived JWTs with rotating refresh tokens
+- Include proper `aud` and `iss` claims in tokens
+- Implement proper session management
+- Use proper password hashing (bcrypt/Argon2)
+- Implement proper rate limiting
+- Use proper MFA for sensitive actions
+- Follow least privilege principle
+
+## Data Protection
+- Encrypt sensitive data at rest
+- Use proper TLS/SSL for data in transit
+- Implement proper key management
+- Use proper encryption algorithms
+- Follow data minimization principles
+- Implement proper data retention policies
+- Use proper data backup strategies
+- Follow data classification guidelines
+
+## API Security
+- Implement proper API authentication
+- Use proper API rate limiting
+- Implement proper API versioning
+- Use proper API documentation
+- Follow API security best practices
+- Implement proper API monitoring
+- Use proper API error handling
+- Follow API design best practices
+
+## Infrastructure Security
+- Use proper network segmentation
+- Implement proper firewall rules
+- Use proper security groups
+- Implement proper access controls
+- Follow infrastructure security best practices
+- Use proper monitoring and alerting
+- Implement proper backup strategies
+- Follow infrastructure hardening guidelines
+
+## Container Security
+- Use proper base images
+- Implement proper image scanning
+- Use proper container runtime security
+- Implement proper container networking
+- Follow container security best practices
+- Use proper container orchestration
+- Implement proper container monitoring
+- Follow container hardening guidelines
+
+## Compliance & Privacy
+- Follow GDPR requirements
+- Implement proper consent management
+- Use proper privacy policies
+- Implement proper data subject rights
+- Follow privacy best practices
+- Use proper data protection impact assessments
+- Implement proper breach notification
+- Follow compliance monitoring guidelines
+
+## Monitoring & Logging
+- Implement proper security logging
+- Use proper log aggregation
+- Implement proper log analysis
+- Use proper alerting mechanisms
+- Follow monitoring best practices
+- Use proper SIEM integration
+- Implement proper incident response
+- Follow security operations best practices
+
+## Incident Response
+- Implement proper incident response plan
+- Use proper incident detection
+- Implement proper incident containment
+- Use proper incident recovery
+- Follow incident response best practices
+- Use proper incident documentation
+- Implement proper incident review
+- Follow incident management guidelines
+
+## Security Testing
+- Implement proper penetration testing
+- Use proper vulnerability scanning
+- Implement proper security code review
+- Use proper security automation
+- Follow security testing best practices
+- Use proper threat modeling
+- Implement proper security training
+- Follow security assessment guidelines
