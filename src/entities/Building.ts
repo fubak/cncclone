@@ -244,7 +244,7 @@ export class Building {
   }
 
   public getPowerOutput(): number {
-    return this.isConstructed ? this.powerOutput : 0;
+    return this.isConstructed ? this.powerOutput * this.powerEfficiency : 0;
   }
 
   public getPowerConsumption(): number {
@@ -255,6 +255,16 @@ export class Building {
     return this.cost;
   }
 
+  private cachedPosition: THREE.Vector3 | null = null;
+
+   public getPosition(): THREE.Vector3 {
+    // Only clone when position has changed
+    if (!this.cachedPosition || !this.cachedPosition.equals(this.mesh.position)) {
+      this.cachedPosition = this.mesh.position.clone();
+    }
+    return this.cachedPosition;
+   }
+
   public takeDamage(amount: number): void {
     this.health = Math.max(0, this.health - amount);
     this.updateHealthBar();
@@ -263,14 +273,37 @@ export class Building {
     }
   }
 
-  private destroy(): void {
-    // Remove from scene
-    this.scene.remove(this.mesh);
-    // Clean up resources
-    this.healthBarCanvas.remove();
-    this.mesh.geometry.dispose();
-    (this.mesh.material as THREE.Material).dispose();
+  private disposeMaterial(material: THREE.Material | THREE.Material[]): void {
+    if (Array.isArray(material)) {
+      material.forEach(m => this.disposeMaterial(m));
+      return;
+    }
+    
+    // Dispose texture if present
+    if ('map' in material && material.map) {
+      material.map.dispose();
+    }
+    material.dispose();
   }
+
+   private destroy(): void {
+     // Remove from scene
+     this.scene.remove(this.mesh);
+     // Clean up resources
+     this.healthBarCanvas.remove();
+     // Dispose mesh geometry and material
+     this.mesh.geometry.dispose();
+    this.disposeMaterial(this.mesh.material);
+     // Dispose selection ring
+     if (this.selectionRing) {
+       this.selectionRing.geometry.dispose();
+      this.disposeMaterial(this.selectionRing.material);
+     }
+     // Dispose health bar sprite texture and material
+    this.disposeMaterial(this.healthBarSprite.material);
+     // Dispose name label texture and material
+    this.disposeMaterial(this.nameLabel.material);
+   }
 
   private updateHealthBar(): void {
     if (!this.healthBarCtx) return;

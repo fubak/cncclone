@@ -79,10 +79,20 @@ export const UNIT_STATS: Record<UnitType, UnitStats> = {
   },
 };
 
+// Ability types
+export type UnitAbility = {
+  name: string;
+  cooldown: number;
+  lastUsed: number;
+  activate: (unit: Unit, deltaTime: number) => void;
+  isPassive?: boolean;
+};
+
 export class Unit {
   private id: number;
   private mesh: THREE.Mesh;
   private stats: UnitStats;
+  private baselineSpeed: number;
   private targetPosition: THREE.Vector3 | null = null;
   private isSelected: boolean = false;
   private selectionCircle: THREE.Mesh | null = null;
@@ -110,6 +120,29 @@ export class Unit {
   private projectilePool: THREE.Mesh[] = [];
   private maxProjectiles: number = 20;
   private attackEffect: THREE.Mesh | null = null;
+  private abilities: UnitAbility[] = [];
+  private speedBoostActive: boolean = false;
+  private speedBoostTimer: number = 0;
+  private getOpposingUnits: (() => Unit[]) | null = null;
+
+  // Static materials and geometries for projectiles
+  private static readonly projectileMaterials: Record<UnitType, THREE.MeshBasicMaterial> = {
+    [UnitType.INFANTRY]: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
+    [UnitType.TANK]: new THREE.MeshBasicMaterial({ color: 0x4caf50 }),
+    [UnitType.ARTILLERY]: new THREE.MeshBasicMaterial({ color: 0x9c27b0 }),
+    [UnitType.ANTI_AIR]: new THREE.MeshBasicMaterial({ color: 0xf44336 }),
+    [UnitType.HARVESTER]: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
+    [UnitType.SCOUT]: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
+  };
+
+  private static readonly projectileGeometries: Record<UnitType, THREE.SphereGeometry> = {
+    [UnitType.INFANTRY]: new THREE.SphereGeometry(0.1, 8, 8),
+    [UnitType.TANK]: new THREE.SphereGeometry(0.18, 8, 8),
+    [UnitType.ARTILLERY]: new THREE.SphereGeometry(0.22, 8, 8),
+    [UnitType.ANTI_AIR]: new THREE.SphereGeometry(0.14, 8, 8),
+    [UnitType.HARVESTER]: new THREE.SphereGeometry(0.1, 8, 8),
+    [UnitType.SCOUT]: new THREE.SphereGeometry(0.1, 8, 8),
+  };
 
   constructor(
     id: number,
@@ -117,7 +150,8 @@ export class Unit {
     scene: THREE.Scene,
     camera: THREE.Camera,
     unitType: UnitType = UnitType.INFANTRY,
-    isEnemy: boolean = false
+    isEnemy: boolean = false,
+    getOpposingUnits?: () => Unit[]
   ) {
     this.id = id;
     this.scene = scene;
@@ -125,6 +159,7 @@ export class Unit {
     this.unitType = unitType;
     this.isEnemy = isEnemy;
     this.stats = UNIT_STATS[unitType];
+    this.baselineSpeed = this.stats.speed;
     this.health = this.stats.health;
     this.maxHealth = this.stats.health;
 
@@ -192,6 +227,64 @@ export class Unit {
     this.initializeProjectilePool();
 
     this.updateHealthBar();
+
+    this.initAbilities();
+
+    if (getOpposingUnits) {
+      this.getOpposingUnits = getOpposingUnits;
+    }
+  }
+
+  private initAbilities() {
+    if (this.unitType === UnitType.TANK) {
+      // Splash damage passive
+      this.abilities.push({
+        name: 'Splash Damage',
+        cooldown: 0,
+        lastUsed: 0,
+        activate: () => {},
+        isPassive: true,
+      });
+    }
+    if (this.unitType === UnitType.ARTILLERY) {
+      // Long-range projectile (visual only, handled in fireProjectile)
+      this.abilities.push({
+        name: 'Long Range',
+        cooldown: 0,
+        lastUsed: 0,
+        activate: () => {},
+        isPassive: true,
+      });
+    }
+    if (this.unitType === UnitType.SCOUT) {
+      // Speed boost active ability
+      this.abilities.push({
+        name: 'Speed Boost',
+        cooldown: 10,
+        lastUsed: -Infinity,
+        activate: (unit: Unit, _dt: number) => {
+          if (!unit.speedBoostActive) {
+            unit.speedBoostActive = true;
+            unit.speedBoostTimer = 3; // 3 seconds
+            unit.stats.speed = unit.baselineSpeed * 2;
+          }
+        },
+      });
+    }
+    if (this.unitType === UnitType.INFANTRY) {
+      // Self-heal passive (regenerate 5 HP/sec)
+      this.abilities.push({
+        name: 'Self Heal',
+        cooldown: 0,
+        lastUsed: 0,
+        activate: (unit: Unit, deltaTime: number) => {
+          const healRate = 5; // HP per second
+          if (unit.health < unit.maxHealth) {
+            unit.health = Math.min(unit.maxHealth, unit.health + deltaTime * healRate);
+          }
+        },
+      });
+    }
   }
 
   private getUnitGeometry(): THREE.BufferGeometry {
@@ -234,11 +327,11 @@ export class Unit {
   }
 
   private initializeProjectilePool(): void {
-    const geometry = new THREE.SphereGeometry(0.1, 8, 8);
-    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    
     for (let i = 0; i < this.maxProjectiles; i++) {
-      const projectile = new THREE.Mesh(geometry, material);
+      const projectile = new THREE.Mesh(
+        Unit.projectileGeometries[this.unitType],
+        Unit.projectileMaterials[this.unitType]
+      );
       projectile.visible = false;
       this.scene.add(projectile);
       this.projectilePool.push(projectile);
@@ -249,9 +342,13 @@ export class Unit {
     return this.projectilePool.find(p => !p.visible) || null;
   }
 
-  private fireProjectile(target: THREE.Vector3): void {
-    const projectile = this.getProjectile();
+  private fireProjectile(target: THREE.Vector3, onImpact?: (pos: THREE.Vector3) => void): void {
+    let projectile: THREE.Mesh | null = this.getProjectile();
     if (!projectile) return;
+
+    // Update material and geometry based on unit type
+    projectile.material = Unit.projectileMaterials[this.unitType];
+    projectile.geometry = Unit.projectileGeometries[this.unitType];
 
     const startPos = this.mesh.position.clone();
     startPos.y += 0.5;
@@ -260,22 +357,22 @@ export class Unit {
 
     const direction = target.clone().sub(startPos).normalize();
     const distance = startPos.distanceTo(target);
-    const speed = 20;
+    let speed = 20;
+    if (this.unitType === UnitType.ARTILLERY) speed = 10;
     const duration = distance / speed;
-
     const startTime = performance.now();
+
     const animate = () => {
       const elapsed = (performance.now() - startTime) / 1000;
       if (elapsed >= duration) {
         projectile.visible = false;
+        if (onImpact) onImpact(target);
         return;
       }
-
       const progress = elapsed / duration;
       projectile.position.lerpVectors(startPos, target, progress);
       requestAnimationFrame(animate);
     };
-
     animate();
   }
 
@@ -284,16 +381,46 @@ export class Unit {
       this.targetUnit = null;
       return;
     }
-
     const now = performance.now() / 1000;
     if (now - this.lastAttackTime >= this.stats.attackCooldown) {
-      // Fire projectile
-      const targetPos = target.getPosition().clone();
-      targetPos.y += 0.5;
-      this.fireProjectile(targetPos);
-
-      // Deal damage
-      target.takeDamage(this.stats.attackDamage);
+      // Fire projectile with splash/ability logic
+      if (this.unitType === UnitType.TANK) {
+        this.fireProjectile(target.getPosition(), (impactPos) => {
+          // Splash damage: affect all units in radius
+          const splashRadius = 1.5;
+          const units = this.getOpposingUnits ? this.getOpposingUnits() : [];
+          if (units.length > 0) {
+            // Apply splash damage to nearby units
+            for (const u of units) {
+              if (!u.isDead() && u.getIsEnemy() !== this.isEnemy && u.getPosition().distanceTo(impactPos) < splashRadius) {
+                u.takeDamage(this.stats.attackDamage);
+              }
+            }
+          }
+          // Always apply damage to the target
+          target.takeDamage(this.stats.attackDamage);
+        });
+      } else if (this.unitType === UnitType.ARTILLERY) {
+        this.fireProjectile(target.getPosition(), (impactPos) => {
+          // Artillery: high damage, small splash
+          const splashRadius = 1.0;
+          const units = this.getOpposingUnits ? this.getOpposingUnits() : [];
+          if (units.length > 0) {
+            // Apply splash damage to nearby units
+            for (const u of units) {
+              if (!u.isDead() && u.getIsEnemy() !== this.isEnemy && u.getPosition().distanceTo(impactPos) < splashRadius) {
+                u.takeDamage(this.stats.attackDamage);
+              }
+            }
+          }
+          // Always apply damage to the target
+          target.takeDamage(this.stats.attackDamage);
+        });
+      } else {
+        this.fireProjectile(target.getPosition(), () => {
+          target.takeDamage(this.stats.attackDamage);
+        });
+      }
       this.lastAttackTime = now;
     }
   }
@@ -359,7 +486,10 @@ export class Unit {
           const now = performance.now() / 1000;
           if (now - this.lastHarvestTime >= this.harvestCooldown) {
             const gathered = this.harvestTarget.harvest(this.harvestRate);
-            this.carriedResources += gathered;
+            this.carriedResources = Math.min(
+              this.maxCarriedResources,
+              this.carriedResources + gathered
+            );
             this.lastHarvestTime = now;
             
             // If full or resource depleted, start returning
@@ -389,12 +519,14 @@ export class Unit {
           this.carriedResources = 0;
           
           // Return to harvesting if there's a target
-          if (this.harvestTarget) {
-            this.moveTo(this.harvestTarget.getPosition());
+          const previousTarget = this.harvestTarget;
+          this.harvestTarget = null;
+          // Resume harvesting if node still has resources
+          if (previousTarget && !previousTarget.isDepleted()) {
+            this.setHarvestTarget(previousTarget);
           }
         }
       }
-      return;
     }
 
     // Combat logic
@@ -413,14 +545,26 @@ export class Unit {
       }
     } else if (this.targetPosition) {
       const direction = this.targetPosition.clone().sub(this.mesh.position);
-      const distance = direction.length();
-
-      if (distance > 0.1) {
-        direction.normalize();
-        const movement = direction.multiplyScalar(this.stats.speed * deltaTime);
-        this.mesh.position.add(movement);
-      } else {
+      direction.normalize();
+      const movement = direction.multiplyScalar(this.stats.speed * deltaTime);
+      this.mesh.position.add(movement);
+      
+      // Check if we've reached the target position
+      if (this.mesh.position.distanceTo(this.targetPosition) < 0.1) {
         this.targetPosition = null;
+      }
+    }
+
+    // Abilities
+    for (const ability of this.abilities) {
+      if (ability.isPassive) ability.activate(this, deltaTime);
+    }
+    // Speed boost timer
+    if (this.speedBoostActive) {
+      this.speedBoostTimer -= deltaTime;
+      if (this.speedBoostTimer <= 0) {
+        this.speedBoostActive = false;
+        this.stats.speed = this.baselineSpeed;
       }
     }
   }
@@ -436,6 +580,10 @@ export class Unit {
   public setHealth(health: number): void {
     this.health = Math.max(0, Math.min(health, this.maxHealth));
     this.updateHealthBar();
+  }
+
+  public getHealth(): number {
+    return this.health;
   }
 
   private updateHealthBar(): void {
@@ -463,8 +611,13 @@ export class Unit {
   public setUnitType(type: UnitType): void {
     this.unitType = type;
     this.stats = UNIT_STATS[type];
+    this.baselineSpeed = this.stats.speed;
     this.health = this.stats.health;
     this.maxHealth = this.stats.health;
+    this.abilities = [];
+    this.speedBoostActive = false;
+    this.speedBoostTimer = 0;
+    this.initAbilities();
     this.updateNameLabel();
   }
 
@@ -488,8 +641,11 @@ export class Unit {
       ctx.strokeText(this.unitType, 128, 32);
       ctx.fillText(this.unitType, 128, 32);
       const newTexture = new THREE.CanvasTexture(canvas);
-      (this.nameLabel.material as THREE.SpriteMaterial).map = newTexture;
-      (this.nameLabel.material as THREE.SpriteMaterial).map.needsUpdate = true;
+      const mat = this.nameLabel.material as THREE.SpriteMaterial;
+      if (mat && mat.map) {
+        mat.map = newTexture;
+        mat.map.needsUpdate = true;
+      }
     }
   }
 
@@ -499,15 +655,39 @@ export class Unit {
   }
 
   public cleanup(): void {
-    // Clean up projectiles
-    this.projectilePool.forEach(projectile => {
+    // Dispose of unit resources
+    if (this.mesh) {
+      this.mesh.geometry.dispose();
+      (this.mesh.material as THREE.Material).dispose();
+    }
+    if (this.selectionCircle) {
+      this.selectionCircle.geometry.dispose();
+      (this.selectionCircle.material as THREE.Material).dispose();
+    }
+    if (this.healthBarSprite) {
+      const healthBarMat = this.healthBarSprite.material as THREE.SpriteMaterial;
+      if (healthBarMat.map) healthBarMat.map.dispose();
+      healthBarMat.dispose();
+    }
+    if (this.nameLabel) {
+      const nameLabelMat = this.nameLabel.material as THREE.SpriteMaterial;
+      if (nameLabelMat.map) nameLabelMat.map.dispose();
+      nameLabelMat.dispose();
+    }
+    if (this.attackEffect) {
+      this.attackEffect.geometry.dispose();
+      (this.attackEffect.material as THREE.Material).dispose();
+    }
+
+    // Dispose of projectile pool
+    for (const projectile of this.projectilePool) {
       this.scene.remove(projectile);
       projectile.geometry.dispose();
       (projectile.material as THREE.Material).dispose();
-    });
+    }
+    this.projectilePool = [];
 
     // Clean up other resources
-    this.scene.remove(this.mesh);
     this.scene.remove(this.movementIndicator.getMesh());
     this.healthBarCanvas.remove();
     this.mesh.geometry.dispose();
@@ -536,5 +716,25 @@ export class Unit {
 
   public getCarriedResources(): number {
     return this.carriedResources;
+  }
+
+  public tryActivateAbility(name: string): boolean {
+    const ability = this.abilities.find(a => a.name === name && !a.isPassive);
+    if (!ability) return false;
+    const now = performance.now() / 1000;
+    if (now - ability.lastUsed >= ability.cooldown) {
+      ability.activate(this, 0);
+      ability.lastUsed = now;
+      return true;
+    }
+    return false;
+  }
+
+  // Static cleanup method to dispose of shared resources
+  public static dispose(): void {
+    // Dispose of static materials
+    Object.values(Unit.projectileMaterials).forEach(material => material.dispose());
+    // Dispose of static geometries
+    Object.values(Unit.projectileGeometries).forEach(geometry => geometry.dispose());
   }
 } 

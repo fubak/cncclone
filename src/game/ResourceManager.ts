@@ -33,18 +33,33 @@ export class ResourceManager {
     this.harvesters.push(harvester);
   }
 
-  public update(deltaTime: number): void {
-    // Update power generation and consumption
-    this.updatePower(deltaTime);
-    
-    // Update resource processing
-    this.updateResourceProcessing(deltaTime);
-  }
+public update(deltaTime: number): void {
+  // Update power generation and consumption
+  this.updatePower();
+  
+  // Update resource processing
+  this.updateResourceProcessing(deltaTime);
+}
 
-  private updatePower(deltaTime: number): void {
-    // Calculate power efficiency (0-1)
-    const powerEfficiency = this.power >= this.powerConsumption ? 1 : this.power / this.powerConsumption;
-    
+private updatePower(): void {
+   // Re-aggregate every frame
+  this.power = 0;
+  this.powerConsumption = 0;
+  
+  // Single pass through buildings
+  this.buildings.forEach(b => {
+    if (b.isConstructed) {
+      // Add to power if it's a power plant (or store in dedicated array)
+      if (b.type === BuildingType.POWER_PLANT) {
+        this.power += b.getPowerOutput();
+      }
+      // Add to consumption for all buildings
+      this.powerConsumption += b.getPowerConsumption();
+    }
+  });
+
+   const powerEfficiency =
+     this.powerConsumption === 0 ? 1 : Math.min(1, this.power / this.powerConsumption);
     // Update building states based on power
     this.buildings.forEach(building => {
       if (building.type === BuildingType.REFINERY) {
@@ -94,9 +109,9 @@ export class ResourceManager {
     return this.powerConsumption;
   }
 
-  public getPowerEfficiency(): number {
-    return this.power >= this.powerConsumption ? 1 : this.power / this.powerConsumption;
-  }
+public getPowerEfficiency(): number {
+  return this.powerConsumption === 0 ? 1 : Math.min(1, this.power / this.powerConsumption);
+}
 
   public canAfford(energyCredits: number): boolean {
     return this.energyCredits >= energyCredits;
@@ -108,5 +123,9 @@ export class ResourceManager {
       return true;
     }
     return false;
+  }
+
+  public removeResourceNode(node: ResourceNode): void {
+    this.resourceNodes = this.resourceNodes.filter(n => n !== node);
   }
 } 

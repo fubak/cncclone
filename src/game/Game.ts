@@ -4,7 +4,7 @@ import { InputManager } from '../core/InputManager';
 import { Unit, UnitType, UNIT_STATS } from '../entities/Unit';
 import { SoundManager } from '../SoundManager';
 import { ResourceNode } from '../entities/ResourceNode';
-import { Building, BuildingType } from '../entities/Building';
+import { Building, BuildingType, BUILDING_STATS } from '../entities/Building';
 import { ResourceManager } from './ResourceManager';
 
 class EffectManager {
@@ -381,26 +381,28 @@ export class Game {
   private onMoveCommand(position: { x: number; y: number; z: number }): void {
     const targetPos = new THREE.Vector3(position.x, 0, position.z);
     
-    // Check if we clicked on a resource node
-    const resourceNode = this.findResourceNodeAtPosition(targetPos);
-    if (resourceNode) {
-      // If we have a harvester selected, set it to harvest
-      this.selectedUnitIds.forEach(id => {
-        const unit = this.units.find(u => u.getId() === id);
-        if (unit && unit.getUnitType() === UnitType.HARVESTER) {
-          unit.setHarvestTarget(resourceNode);
-          // Find nearest refinery for return
-          const nearestRefinery = this.findNearestRefinery(unit.getPosition());
-          if (nearestRefinery) {
-            unit.setReturnTarget(nearestRefinery);
-            unit.setOnResourceDeposited((amount) => {
-              this.resourceManager.depositPromethium(amount);
-            });
+    // Check if we're moving harvesters to a resource node
+    if (this.selectedUnitIds.some(id => {
+      const unit = this.units.find(u => u.getId() === id);
+      return unit?.getUnitType() === UnitType.HARVESTER;
+    })) {
+      const resourceNode = this.findResourceNodeAtPosition(targetPos);
+      if (resourceNode) {
+        this.selectedUnitIds.forEach(id => {
+          const unit = this.units.find(u => u.getId() === id);
+          if (unit?.getUnitType() === UnitType.HARVESTER) {
+            unit.setHarvestTarget(resourceNode);
+          } else {
+            unit?.moveTo(targetPos);
           }
-        } else {
+        });
+      } else {
+        // Normal move command
+        this.selectedUnitIds.forEach(id => {
+          const unit = this.units.find(u => u.getId() === id);
           unit?.moveTo(targetPos);
-        }
-      });
+        });
+      }
     } else {
       // Normal move command
       this.selectedUnitIds.forEach(id => {
@@ -544,12 +546,13 @@ export class Game {
       console.log('[DEBUG] placeBuilding: No currentBuildingType or ghostBuilding');
       return;
     }
-
-    const cost = this.getBuildingCost(this.currentBuildingType);
-    if (!this.resourceManager.canAfford(cost)) {
-      console.log('[DEBUG] Not enough energy credits to build', { cost, energyCredits: this.resourceManager.getEnergyCredits() });
-      return;
-    }
+  const cost = this.getBuildingCost(this.currentBuildingType);
+  if (!this.resourceManager.canAfford(cost)) {
+     console.log('[DEBUG] Not enough energy credits to build', { cost, energyCredits: this.resourceManager.getEnergyCredits() });
+     this.cancelBuildingPlacement();           // exit placement mode
+     // TODO: surface a UI warning to the player
+     return;
+   }
 
     const position = this.ghostBuilding.position.clone();
     console.log('[DEBUG] Placing building', { type: this.currentBuildingType, position });
@@ -627,6 +630,8 @@ export class Game {
     depletedNodes.forEach(node => {
       this.scene.remove(node.getMesh());
     });
+    // Also inform the resource manager
+    depletedNodes.forEach(node => this.resourceManager.removeResourceNode(node));
     this.resourceNodes = this.resourceNodes.filter(node => !node.isDepleted());
 
     // Check win/lose conditions
@@ -681,7 +686,7 @@ export class Game {
     this.resourceCounterDiv.innerHTML = `
       <div>Promethium: ${Math.floor(promethium)}</div>
       <div>Energy Credits: ${Math.floor(energyCredits)}</div>
-      <div>Power: ${Math.floor(power)} / ${Math.floor(powerConsumption)}</div>
+      <div>Power: ${Math.floor(powerConsumption)} / ${Math.floor(power)} used</div>
       <div>Efficiency: ${Math.floor(powerEfficiency * 100)}%</div>
     `;
   }
@@ -805,8 +810,8 @@ export class Game {
     }
   }
 
-  private getBuildingCost(type: BuildingType): number {
-    // For testing, all buildings are free
-    return 0;
-  }
+private getBuildingCost(type: BuildingType): number {
+  const stats = BUILDING_STATS[type];
+  return stats ? stats.cost : Infinity; // fail-safe
+ }
 } 

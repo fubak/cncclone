@@ -1,0 +1,34 @@
+# Node.js dependencies
+node_modules/
+
+# Build output
+dist/
+*.log
+
+# Local environment
+.env
+.env.*
+
+# Vite cache
+.vite/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode/
+.idea/
+*.swp
+
+# Docker
+*.local
+docker-compose.override.yml
+
+# Test coverage
+coverage/
+
+# Misc
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log* 
