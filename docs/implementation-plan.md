@@ -14,140 +14,145 @@
 Goal: Establish a working Three.js project with basic scene rendering and core utilities.  
 Cursor Focus: Project scaffolding, Three.js boilerplate, utility function generation.
 
-1. **Task 0.1: Environment & Tooling Setup**  
-   * Initialize Node.js project (package.json).  
-   * Setup bundler (e.g., Vite, Webpack) for module management and development server.  
-   * Initialize Git repository and establish branching strategy (e.g., main, develop, feature branches).  
-   * Install Three.js and any essential utility libraries (e.g., lodash or similar).  
-   * Configure linter (ESLint) and formatter (Prettier) for code consistency.  
-2. **Task 0.2: Basic Three.js Scene**  
-   * Create main HTML file (index.html) and JavaScript entry point (main.js).  
-   * Initialize Three.js renderer, scene, and a basic perspective camera.  
-   * Add simple lighting (ambient, directional).  
-   * Render a ground plane and a few primitive shapes (cubes, spheres) to verify setup.  
-   * Implement a basic render loop using requestAnimationFrame.  
-3. **Task 0.3: Game Loop & State Management (Initial Stub)**  
-   * Establish a main game loop function (update, render).  
-   * Create a placeholder for global game state management (e.g., a simple object or a more structured class).  
-   * Implement basic time management (delta time calculation for frame-rate independent logic).  
-4. **Task 0.4: Asset Loading Pipeline (Initial)**  
-   * Create a simple asset manager class to handle loading of 3D models (glTF), textures.  
-   * Test loading a basic glTF model and texture.
+- [x] **Task 0.1: Environment & Tooling Setup**  
+  * Initialize Node.js project (package.json).  
+  * Setup bundler (e.g., Vite, Webpack) for module management and development server.  
+  * Initialize Git repository and establish branching strategy (e.g., main, develop, feature branches).  
+  * Install Three.js and any essential utility libraries (e.g., lodash or similar).  
+  * Configure linter (ESLint) and formatter (Prettier) for code consistency.  
+- [x] **Task 0.2: Basic Three.js Scene**  
+  * Create main HTML file (index.html) and JavaScript entry point (main.js).  
+  * Initialize Three.js renderer, scene, and a basic perspective camera.  
+  * Add simple lighting (ambient, directional).  
+  * Render a ground plane and a few primitive shapes (cubes, spheres) to verify setup.  
+  * Implement a basic render loop using requestAnimationFrame.  
+- [x] **Task 0.3: Game Loop & State Management (Initial Stub)**  
+  * Establish a main game loop function (update, render).  
+  * Create a placeholder for global game state management (e.g., a simple object or a more structured class).  
+  * Implement basic time management (delta time calculation for frame-rate independent logic).  
+- [x] **Task 0.4: Asset Loading Pipeline (Initial)**  
+  * Create a simple asset manager class to handle loading of 3D models (glTF), textures.  
+  * Test loading a basic glTF model and texture.
 
 ## **Phase 1: Core Interaction & Movement (Sprints 3-5)**
 
 Goal: Implement RTS camera, unit selection, and basic direct unit movement.  
 Cursor Focus: Vector math for camera, raycasting for selection, event handling.
 
-1. **Task 1.1: RTS Camera Implementation**  
-   * Implement camera controls:  
-     * Panning (mouse drag with middle button, or edge scrolling, or WASD/arrow keys).  
-     * Zooming (mouse wheel).  
-     * Rotation (optional, e.g., holding Alt \+ middle mouse drag).  
-   * Set camera limits (min/max zoom, pan boundaries).  
-2. **Task 1.2: Input Handling System**  
-   * Create a centralized input manager to handle mouse clicks (left, right, middle), mouse movement, and keyboard events.  
-   * Map inputs to game actions (e.g., select, command, camera control).  
-3. **Task 1.3: Entity Component System (ECS) \- Basic Structure (Optional but Recommended)**  
-   * If opting for ECS (highly recommended for RTS complexity):  
-     * Define basic Entity (ID), Component (data containers), and System (logic) structures.  
-     * Implement core systems: RenderSystem, MovementSystem (initially simple).  
-   * If not full ECS, establish clear class structures for game objects (e.g., Unit, Building).  
-4. **Task 1.4: Unit Representation & Selection**  
-   * Create a Unit class/entity type.  
-   * Instantiate a few placeholder units (e.g., cubes) on the map.  
-   * Implement single unit selection via mouse click (raycasting from camera to ground/units).  
-   * Implement box selection (drag to select multiple units).  
-   * Visual feedback for selected units (e.g., highlight, selection circle/decal).  
-5. **Task 1.5: Basic Unit Movement (Direct)**  
-   * Implement right-click command to issue a move order to selected unit(s).  
-   * Units move in a straight line towards the target point.  
-   * No pathfinding or collision avoidance yet.  
-   * Basic formation movement (selected units maintain relative positions or move to nearby distinct points).  
-6. **Task 1.6: Terrain Representation**  
-   * Define the ground plane as the primary navigable area.  
-   * Establish how terrain height/obstacles will be represented later for pathfinding.
+- [x] **Task 1.1: RTS Camera Implementation**  
+  * Implement camera controls:  
+    * Panning (mouse drag with middle button, or edge scrolling, or WASD/arrow keys).  
+    * Zooming (mouse wheel).  
+    * Rotation (optional, e.g., holding Alt \+ middle mouse drag).  
+  * Set camera limits (min/max zoom, pan boundaries).  
+- [x] **Task 1.2: Input Handling System**  
+  * Create a centralized input manager to handle mouse clicks (left, right, middle), mouse movement, and keyboard events.  
+  * Map inputs to game actions (e.g., select, command, camera control).  
+- [x] **Task 1.3: Entity Component System (ECS) \- Basic Structure (Optional but Recommended)**  
+  * If opting for ECS (highly recommended for RTS complexity):  
+    * Define basic Entity (ID), Component (data containers), and System (logic) structures.  
+    * Implement core systems: RenderSystem, MovementSystem (initially simple).  
+  * If not full ECS, establish clear class structures for game objects (e.g., Unit, Building).  
+- [x] **Task 1.4: Unit Representation & Selection**  
+  * Create a Unit class/entity type.  
+  * Instantiate a few placeholder units (e.g., cubes) on the map.  
+  * Implement single unit selection via mouse click (raycasting from camera to ground/units).  
+  * Implement box selection (drag to select multiple units).  
+  * Visual feedback for selected units (e.g., highlight, selection circle/decal).  
+- [x] **Task 1.5: Basic Unit Movement (Direct)**  
+  * Implement right-click command to issue a move order to selected unit(s).  
+  * Units move in a straight line towards the target point.  
+  * No pathfinding or collision avoidance yet.  
+  * Basic formation movement (selected units maintain relative positions or move to nearby distinct points).  
+- [x] **Task 1.6: Terrain Representation**  
+  * Define the ground plane as the primary navigable area.  
+  * Establish how terrain height/obstacles will be represented later for pathfinding.
 
 ## **Phase 2: Pathfinding & Advanced Movement (Sprints 6-9)**
 
 Goal: Units can navigate around static obstacles using A pathfinding.\*  
 Cursor Focus: Algorithm implementation, grid data structures, debugging path results.
 
-1. **Task 2.1: Grid System for Pathfinding**  
-   * Overlay a logical grid on the game world for pathfinding.  
-   * Define grid cell properties (walkable, unwalkable, movement cost).  
-   * Implement a way to mark cells as unwalkable (e.g., based on static obstacle positions).  
-2. *Task 2.2: Pathfinding Algorithm Implementation (A)*\*  
-   * Implement the A\* pathfinding algorithm.  
-     * Nodes, open list, closed list, heuristic function (e.g., Manhattan or Euclidean distance).  
-   * Optimize for performance (e.g., binary heap for open list).  
-   * Consider using a well-tested library if custom implementation is too time-consuming, but ensure it can be integrated with your grid and unit systems.  
-3. **Task 2.3: Integrate Pathfinding with Unit Movement**  
-   * When a move command is issued, request a path from the A\* system.  
-   * Units follow the sequence of waypoints returned by A\*.  
-   * Implement path smoothing if desired (e.g., Catmull-Rom splines or simple smoothing).  
-4. **Task 2.4: Basic Static Obstacle Avoidance**  
-   * Ensure units pathfind around predefined static obstacles (e.g., rocks, unbuildable terrain).  
-   * Dynamic obstacle avoidance (other units) will be a later refinement.
+- [x] **Task 2.1: Grid System for Pathfinding**  
+  * Overlay a logical grid on the game world for pathfinding.  
+  * Define grid cell properties (walkable, unwalkable, movement cost).  
+  * Implement a way to mark cells as unwalkable (e.g., based on static obstacle positions).  
+- [x] *Task 2.2: Pathfinding Algorithm Implementation (A)*\*  
+  * Implement the A\* pathfinding algorithm.  
+    * Nodes, open list, closed list, heuristic function (e.g., Manhattan or Euclidean distance).  
+  * Optimize for performance (e.g., binary heap for open list).  
+  * Consider using a well-tested library if custom implementation is too time-consuming, but ensure it can be integrated with your grid and unit systems.  
+- [x] **Task 2.3: Integrate Pathfinding with Unit Movement**  
+  * When a move command is issued, request a path from the A\* system.  
+  * Units follow the sequence of waypoints returned by A\*.  
+  * Implement path smoothing if desired (e.g., Catmull-Rom splines or simple smoothing).  
+- [x] **Task 2.4: Basic Static Obstacle Avoidance**  
+  * Ensure units pathfind around predefined static obstacles (e.g., rocks, unbuildable terrain).  
+  * Dynamic obstacle avoidance (other units) will be a later refinement.
 
 ## **Phase 3: Resource & Basic Building Systems (Sprints 10-14)**
 
 Goal: Implement the core economic loop: harvesting Promethium, generating EC, managing Power, and constructing basic buildings.  
 Cursor Focus: System logic for resource flow, UI updates, building placement logic.
 
-1. **Task 3.1: Promethium Resource Nodes**  
-   * Create PromethiumNode entities/objects.  
-   * Visual representation (e.g., glowing crystals).  
-   * Data: amount of Promethium, regeneration rate (if any, initially finite).  
-2. **Task 3.2: Harvester Unit Logic**  
-   * Designate one placeholder unit as a "Harvester."  
-   * Implement AI behavior:  
-     * Find nearest Promethium Node.  
-     * Move to Node, "harvest" for a duration (decrementing Node's amount).  
-     * Return to a designated drop-off point (e.g., Command Center, later Refinery).  
-     * Deposit resources.  
-3. **Task 3.3: Refinery Structure & Energy Credits (EC)**  
-   * Create Refinery building type.  
-   * Harvesters now drop off Promethium at Refineries.  
-   * Refineries process Promethium into Energy Credits (EC) over time.  
-   * Implement EC as a global player resource.  
-4. **Task 3.4: Power Plant & Power Grid System**  
-   * Create PowerPlant building type.  
-   * Power Plants generate Power (a global player resource).  
-   * Buildings (Refinery, future production buildings) consume Power.  
-   * Implement logic for low-power effects (e.g., reduced production/refining speed).  
-5. **Task 3.5: Basic Construction System**  
-   * Implement ability to place buildings (Command Center, Power Plant, Refinery initially).  
-     * Placement validation (valid terrain, no collisions, within power range if applicable).  
-     * Ghost building preview during placement.  
-   * Constructor unit (e.g., WEC Engineer) "builds" the structure over time (visual progress, build timer).  
-   * Deduct EC cost for construction.
+- [x] **Task 3.1: Promethium Resource Nodes**  
+  * Create PromethiumNode entities/objects.  
+  * Visual representation (e.g., glowing crystals).  
+  * Data: amount of Promethium, regeneration rate (if any, initially finite).  
+- [x] **Task 3.2: Harvester Unit Logic**  
+  * Designate one placeholder unit as a "Harvester."  
+  * Implement AI behavior:  
+    * Find nearest Promethium Node.  
+    * Move to Node, "harvest" for a duration (decrementing Node's amount).  
+    * Return to a designated drop-off point (e.g., Command Center, later Refinery).  
+    * Deposit resources.  
+- [x] **Task 3.3: Refinery Structure & Energy Credits (EC)**  
+  * Create Refinery building type.  
+  * Harvesters now drop off Promethium at Refineries.  
+  * Refineries process Promethium into Energy Credits (EC) over time.  
+  * Implement EC as a global player resource.  
+- [x] **Task 3.4: Power Plant & Power Grid System**  
+  * Create PowerPlant building type.  
+  * Power Plants generate Power (a global player resource).  
+  * Buildings (Refinery, future production buildings) consume Power.  
+  * Implement logic for low-power effects (e.g., reduced production/refining speed).  
+- [x] **Task 3.5: Basic Construction System**  
+  * Implement ability to place buildings (Command Center, Power Plant, Refinery initially).  
+    * Placement validation (valid terrain, no collisions, within power range if applicable).  
+    * Ghost building preview during placement.  
+  * Constructor unit (e.g., WEC Engineer) "builds" the structure over time (visual progress, build timer).  
+  * Deduct EC cost for construction.
+- [x] Resource return logic for harvesters (drop-off at refineries)
+- [x] Player starts with a constructed refinery
+- [x] Passive energy credit generation from refineries
+- [x] Building placement system (ghost preview, finalized placement, currently free for testing)
 
 ## **Phase 4: Combat Systems & Initial Faction Units (Sprints 15-20)**
 
 Goal: Implement basic combat, unit production, and the first distinct units for each faction.  
 Cursor Focus: Combat calculation logic, unit stats management, projectile systems.
 
-1. **Task 4.1: Health & Damage System**  
-   * Add HealthComponent to units and buildings.  
-   * Implement damage calculation when an attack hits.  
-   * Unit/building destruction (visuals, removal from game).  
-2. **Task 4.2: Basic Attack Logic**  
-   * Add AttackComponent to combat units (damage, range, attack speed/cooldown).  
-   * Implement "attack-move" command.  
-   * Units auto-acquire and attack enemy targets within range.  
-   * Simple projectile system (if needed, e.g., for ranged units) or instant hit.  
-3. **Task 4.3: Unit Production Structures**  
-   * Implement Barracks (for infantry) and VehicleFactory (for vehicles) building types (or faction equivalents).  
-   * Units are queued and produced from these structures, costing EC.  
-4. **Task 4.4: Implement 1-2 Core Combat Units for WEC**  
-   * Model (placeholder), stats, and basic attack for WEC units (e.g., Marine-equivalent, light vehicle).  
-   * Focus on making them feel slightly different from ESY counterparts even with placeholders.  
-5. **Task 4.5: Implement 1-2 Core Combat Units for ESY**  
-   * Model (placeholder), stats, and basic attack for ESY units (e.g., Conscript-equivalent, light vehicle).  
-6. **Task 4.6: Faction Identification**  
-   * Assign units and buildings to factions (Player 1, Player 2/AI).  
-   * Basic team colors/identifiers.
+- [x] **Task 4.1: Health & Damage System**  
+  * Add HealthComponent to units and buildings.  
+  * Implement damage calculation when an attack hits.  
+  * Unit/building destruction (visuals, removal from game).  
+- [x] **Task 4.2: Basic Attack Logic**  
+  * Add AttackComponent to combat units (damage, range, attack speed/cooldown).  
+  * Implement "attack-move" command.  
+  * Units auto-acquire and attack enemy targets within range.  
+  * Simple projectile system (if needed, e.g., for ranged units) or instant hit.  
+- [x] **Task 4.3: Unit Production Structures**  
+  * Implement Barracks (for infantry) and VehicleFactory (for vehicles) building types (or faction equivalents).  
+  * Units are queued and produced from these structures, costing EC.  
+- [x] **Task 4.4: Implement 1-2 Core Combat Units for WEC**  
+  * Model (placeholder), stats, and basic attack for WEC units (e.g., Marine-equivalent, light vehicle).  
+  * Focus on making them feel slightly different from ESY counterparts even with placeholders.  
+- [x] **Task 4.5: Implement 1-2 Core Combat Units for ESY**  
+  * Model (placeholder), stats, and basic attack for ESY units (e.g., Conscript-equivalent, light vehicle).  
+- [x] **Task 4.6: Faction Identification**  
+  * Assign units and buildings to factions (Player 1, Player 2/AI).  
+  * Basic team colors/identifiers.
+- [x] Expanded unit system: multiple unit types, stats, projectiles, and combat logic
 
 ## **Phase 5: Basic AI & Game Loop Completion (Sprints 21-25)**
 
@@ -244,5 +249,18 @@ Cursor Focus: Refactoring, asset integration, performance profiling, shader deve
 8. **Task 8.8: Bug Fixing & Polish**  
    * Address bugs as they arise.  
    * General polish to UI, controls, and overall feel.
+
+**Current Testing State:**
+- Building costs are set to 0 for rapid iteration.
+- Debug overlays and logs are enabled for building placement and resource changes.
+- All core resource and combat systems are functional and being iteratively refined.
+
+## **Next Steps**
+- [ ] Advanced AI (base building, resource gathering, combat tactics)
+- [ ] Campaign scripting and mission objectives
+- [ ] Art and sound integration (replace placeholders)
+- [ ] UI/UX polish (minimap, overlays, tooltips, hotkeys)
+- [ ] Performance optimization and bug fixing
+- [ ] Playtesting and balancing
 
 This implementation plan provides a structured approach. Remember that game development is highly iterative; be prepared to revisit earlier phases to refine systems as new features are added and new insights are gained. Good luck\!

@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { CameraController } from '../core/CameraController';
 import { InputManager } from '../core/InputManager';
-import { Unit } from '../entities/Unit';
+import { Unit, UnitType, UNIT_STATS } from '../entities/Unit';
 import { SoundManager } from '../SoundManager';
 import { ResourceNode } from '../entities/ResourceNode';
 import { Building, BuildingType } from '../entities/Building';
+import { ResourceManager } from './ResourceManager';
 
 class EffectManager {
   private scene: THREE.Scene;
@@ -85,6 +86,7 @@ export class Game {
   private buildingJustSelected: boolean = false;
   private lastProductionOverlayBuilding: Building | null = null;
   private lastProductionOverlayState: { isProducing: boolean; queue: number } | null = null;
+  private resourceManager: ResourceManager;
 
   constructor() {
     // Initialize scene
@@ -141,15 +143,15 @@ export class Game {
     this.scene.add(directionalLight);
 
     // Create test units
-    this.units.push(new Unit(1, new THREE.Vector3(0, 0.5, 0), this.scene, this.camera));
-    this.units.push(new Unit(2, new THREE.Vector3(2, 0.5, 2), this.scene, this.camera));
-    this.units.push(new Unit(3, new THREE.Vector3(-2, 0.5, -2), this.scene, this.camera));
+    this.units.push(new Unit(1, new THREE.Vector3(0, 0.5, 0), this.scene, this.camera, UnitType.INFANTRY));
+    this.units.push(new Unit(2, new THREE.Vector3(2, 0.5, 2), this.scene, this.camera, UnitType.INFANTRY));
+    this.units.push(new Unit(3, new THREE.Vector3(-2, 0.5, -2), this.scene, this.camera, UnitType.INFANTRY));
     // Add a Harvester unit (yellow)
-    this.units.push(new Unit(10, new THREE.Vector3(4, 0.5, -4), this.scene, this.camera, 5, 'Harvester'));
+    this.units.push(new Unit(10, new THREE.Vector3(4, 0.5, -4), this.scene, this.camera, UnitType.HARVESTER));
 
     // Create enemy units
-    this.units.push(new Unit(4, new THREE.Vector3(5, 0.5, 5), this.scene, this.camera, 5, 'Enemy', true));
-    this.units.push(new Unit(5, new THREE.Vector3(7, 0.5, 5), this.scene, this.camera, 5, 'Enemy', true));
+    this.units.push(new Unit(4, new THREE.Vector3(5, 0.5, 5), this.scene, this.camera, UnitType.INFANTRY, true));
+    this.units.push(new Unit(5, new THREE.Vector3(7, 0.5, 5), this.scene, this.camera, UnitType.INFANTRY, true));
 
     // Add units to scene
     this.units.forEach(unit => {
@@ -278,14 +280,14 @@ export class Game {
     this.resourceCounterDiv.style.position = 'fixed';
     this.resourceCounterDiv.style.left = '24px';
     this.resourceCounterDiv.style.top = '24px';
-    this.resourceCounterDiv.style.background = 'rgba(30,30,60,0.85)';
+    this.resourceCounterDiv.style.background = 'rgba(30,30,30,0.85)';
     this.resourceCounterDiv.style.color = 'white';
-    this.resourceCounterDiv.style.fontSize = '1.3rem';
-    this.resourceCounterDiv.style.padding = '10px 18px';
-    this.resourceCounterDiv.style.borderRadius = '8px';
-    this.resourceCounterDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
-    this.resourceCounterDiv.style.zIndex = '9999';
-    this.resourceCounterDiv.style.pointerEvents = 'none';
+    this.resourceCounterDiv.style.fontSize = '1.1rem';
+    this.resourceCounterDiv.style.padding = '16px 20px';
+    this.resourceCounterDiv.style.borderRadius = '10px';
+    this.resourceCounterDiv.style.display = 'flex';
+    this.resourceCounterDiv.style.flexDirection = 'column';
+    this.resourceCounterDiv.style.gap = '8px';
     document.body.appendChild(this.resourceCounterDiv);
 
     // Create production overlay (hidden by default)
@@ -332,6 +334,22 @@ export class Game {
     this.buildingHighlight.visible = false;
     this.scene.add(this.buildingHighlight);
 
+    // Initialize resource manager
+    this.resourceManager = new ResourceManager();
+
+    // Update resource nodes to use resource manager
+    this.resourceNodes.forEach(node => {
+      this.resourceManager.addResourceNode(node);
+    });
+
+    // Add starting refinery for the player
+    const startingRefineryPos = new THREE.Vector3(0, 0, -6);
+    const startingRefinery = new Building(BuildingType.REFINERY, startingRefineryPos, this.scene, this.camera);
+    startingRefinery.isConstructed = true;
+    this.scene.add(startingRefinery.mesh);
+    this.buildings.push(startingRefinery);
+    this.resourceManager.addBuilding(startingRefinery);
+
     // Start animation loop
     this.animate();
   }
@@ -343,51 +361,77 @@ export class Game {
   }
 
   private onUnitSelected(unitIds: number[]): void {
-    this.selectedUnitIds = unitIds;
-    if (!this.buildingJustSelected) {
-      this.selectedBuilding = null;
-    }
-    this.buildingJustSelected = false;
-    this.units.forEach(unit => {
-      unit.setSelected(unitIds.includes(unit.getId()));
+    // Deselect all units
+    this.units.forEach(unit => unit.setSelected(false));
+    this.selectedUnitIds = [];
+
+    // Select clicked units
+    unitIds.forEach(id => {
+      const unit = this.units.find(u => u.getId() === id);
+      if (unit) {
+        unit.setSelected(true);
+        this.selectedUnitIds.push(id);
+      }
     });
-    if (unitIds.length > 0) {
-      SoundManager.play('select');
-    }
+
+    // Update unit stats overlay
     this.updateUnitStatsOverlay();
-    this.updateResourceCounter();
-    this.updateProductionOverlay();
-    this.updateBuildingHighlight();
   }
 
   private onMoveCommand(position: { x: number; y: number; z: number }): void {
-    // Get selected units
-    const selectedUnits = this.units.filter(unit => unit.isUnitSelected());
-    const n = selectedUnits.length;
-    if (n === 0) return;
-    SoundManager.play('move');
+    const targetPos = new THREE.Vector3(position.x, 0, position.z);
+    
+    // Check if we clicked on a resource node
+    const resourceNode = this.findResourceNodeAtPosition(targetPos);
+    if (resourceNode) {
+      // If we have a harvester selected, set it to harvest
+      this.selectedUnitIds.forEach(id => {
+        const unit = this.units.find(u => u.getId() === id);
+        if (unit && unit.getUnitType() === UnitType.HARVESTER) {
+          unit.setHarvestTarget(resourceNode);
+          // Find nearest refinery for return
+          const nearestRefinery = this.findNearestRefinery(unit.getPosition());
+          if (nearestRefinery) {
+            unit.setReturnTarget(nearestRefinery);
+            unit.setOnResourceDeposited((amount) => {
+              this.resourceManager.depositPromethium(amount);
+            });
+          }
+        } else {
+          unit?.moveTo(targetPos);
+        }
+      });
+    } else {
+      // Normal move command
+      this.selectedUnitIds.forEach(id => {
+        const unit = this.units.find(u => u.getId() === id);
+        unit?.moveTo(targetPos);
+      });
+    }
+  }
 
-    // Formation parameters
-    const spacing = 1.5; // Distance between units
-    const gridCols = Math.ceil(Math.sqrt(n));
-    const gridRows = Math.ceil(n / gridCols);
-    const center = new THREE.Vector3(position.x, position.y, position.z);
+  private findResourceNodeAtPosition(position: THREE.Vector3): ResourceNode | null {
+    const threshold = 2; // Distance threshold for clicking
+    return this.resourceNodes.find(node => 
+      node.getPosition().distanceTo(position) < threshold
+    ) || null;
+  }
 
-    // Calculate top-left corner of the grid
-    const offsetX = -((gridCols - 1) * spacing) / 2;
-    const offsetZ = -((gridRows - 1) * spacing) / 2;
+  private findNearestRefinery(position: THREE.Vector3): Building | null {
+    let nearest: Building | null = null;
+    let minDistance = Infinity;
 
-    // Assign each unit a position in the grid
-    selectedUnits.forEach((unit, i) => {
-      const col = i % gridCols;
-      const row = Math.floor(i / gridCols);
-      const target = new THREE.Vector3(
-        center.x + offsetX + col * spacing,
-        center.y,
-        center.z + offsetZ + row * spacing
-      );
-      unit.moveTo(target);
+    this.buildings.forEach(building => {
+      if (building.type === BuildingType.REFINERY && building.isConstructed) {
+        const distance = building.mesh.position.distanceTo(position);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearest = building;
+        }
+      }
     });
+
+    return nearest;
   }
 
   private onAttackCommand(targetId: number): void {
@@ -397,8 +441,8 @@ export class Game {
     // Check if right-clicked a resource node (by resourceId)
     const resourceNode = this.resourceNodes.find(node => node.getResourceId() === targetId);
     // If harvester(s) selected and resource node clicked, command to harvest
-    if (selectedUnits.some(u => u.getUnitType() === 'Harvester')) {
-      const harvesterUnits = selectedUnits.filter(u => u.getUnitType() === 'Harvester');
+    if (selectedUnits.some(u => u.getUnitType() === UnitType.HARVESTER)) {
+      const harvesterUnits = selectedUnits.filter(u => u.getUnitType() === UnitType.HARVESTER);
       if (resourceNode) {
         harvesterUnits.forEach(h => h.setHarvestTarget(resourceNode));
         return;
@@ -495,18 +539,42 @@ export class Game {
     }
   }
 
-  private placeBuilding(): void {
-    if (!this.ghostBuilding || !this.currentBuildingType) return;
+  private placeBuilding() {
+    if (!this.currentBuildingType || !this.ghostBuilding) {
+      console.log('[DEBUG] placeBuilding: No currentBuildingType or ghostBuilding');
+      return;
+    }
+
+    const cost = this.getBuildingCost(this.currentBuildingType);
+    if (!this.resourceManager.canAfford(cost)) {
+      console.log('[DEBUG] Not enough energy credits to build', { cost, energyCredits: this.resourceManager.getEnergyCredits() });
+      return;
+    }
+
     const position = this.ghostBuilding.position.clone();
+    console.log('[DEBUG] Placing building', { type: this.currentBuildingType, position });
     const building = new Building(this.currentBuildingType, position, this.scene, this.camera);
-    // Wire up unit production callback
-    building.onUnitProduced = (unit: Unit) => {
-      this.units.push(unit);
-      this.scene.add(unit.getMesh());
-      SoundManager.play('select');
-    };
-    this.buildings.push(building);
+    
+    // Add building to resource manager
+    this.resourceManager.addBuilding(building);
+    
+    // Add building to scene and list
     this.scene.add(building.mesh);
+    this.buildings.push(building);
+
+    // Set up unit production callback
+    if (this.currentBuildingType === BuildingType.BARRACKS) {
+      building.onUnitProduced = (unit: Unit) => {
+        this.units.push(unit);
+        this.scene.add(unit.getMesh());
+      };
+    }
+
+    // Spend energy credits
+    this.resourceManager.spendEnergyCredits(cost);
+    console.log('[DEBUG] Building placed and energy credits spent', { cost, remaining: this.resourceManager.getEnergyCredits() });
+
+    // Clean up
     this.cancelBuildingPlacement();
   }
 
@@ -529,13 +597,18 @@ export class Game {
 
     const deltaTime = this.clock.getDelta();
 
+    // Update resource manager
+    this.resourceManager.update(deltaTime);
+
     // Update units
     this.units.forEach(unit => {
       unit.update(deltaTime);
     });
 
     // Update buildings
-    this.buildings.forEach(building => building.update(deltaTime));
+    this.buildings.forEach(building => {
+      building.update(deltaTime);
+    });
 
     // Update effects
     this.effectManager.update(deltaTime);
@@ -598,8 +671,19 @@ export class Game {
 
   private updateResourceCounter() {
     if (!this.resourceCounterDiv) return;
-    const total = this.units.filter(u => u.getUnitType() === 'Harvester').reduce((sum, h) => sum + (h.getCarriedResources?.() || 0), 0);
-    this.resourceCounterDiv.textContent = `Resources: ${total}`;
+
+    const promethium = this.resourceManager.getPromethium();
+    const energyCredits = this.resourceManager.getEnergyCredits();
+    const power = this.resourceManager.getPower();
+    const powerConsumption = this.resourceManager.getPowerConsumption();
+    const powerEfficiency = this.resourceManager.getPowerEfficiency();
+
+    this.resourceCounterDiv.innerHTML = `
+      <div>Promethium: ${Math.floor(promethium)}</div>
+      <div>Energy Credits: ${Math.floor(energyCredits)}</div>
+      <div>Power: ${Math.floor(power)} / ${Math.floor(powerConsumption)}</div>
+      <div>Efficiency: ${Math.floor(powerEfficiency * 100)}%</div>
+    `;
   }
 
   private updateUnitStatsOverlay() {
@@ -609,15 +693,18 @@ export class Game {
         this.unitStatsDiv.style.display = 'none';
       } else {
         this.unitStatsDiv.innerHTML = `<b>Selected Units (${selectedUnits.length})</b><br><br>` +
-          selectedUnits.map(unit => `
-            <div style="margin-bottom: 10px;">
-              <b>${unit.getUnitType()}</b> (ID: ${unit.getId()})<br>
-              Health: ${unit['health']} / ${unit['maxHealth']}<br>
-              Attack: ${unit['attackDamage'] ?? '-'}<br>
-              Speed: ${unit['speed'] ?? '-'}<br>
-              ${unit.getUnitType() === 'Harvester' ? `Carrying: ${unit.getCarriedResources?.() || 0}` : ''}
-            </div>
-          `).join('');
+          selectedUnits.map(unit => {
+            const stats = UNIT_STATS[unit.getUnitType()];
+            return `
+              <div style="margin-bottom: 10px;">
+                <b>${unit.getUnitType()}</b> (ID: ${unit.getId()})<br>
+                Health: ${unit['health']} / ${unit['maxHealth']}<br>
+                Attack: ${stats.attackDamage}<br>
+                Speed: ${stats.speed}<br>
+                ${unit.getUnitType() === UnitType.HARVESTER ? `Carrying: ${unit.getCarriedResources()}` : ''}
+              </div>
+            `;
+          }).join('');
         this.unitStatsDiv.style.display = 'block';
       }
     }
@@ -716,5 +803,10 @@ export class Game {
     } else {
       this.buildingHighlight!.visible = false;
     }
+  }
+
+  private getBuildingCost(type: BuildingType): number {
+    // For testing, all buildings are free
+    return 0;
   }
 } 

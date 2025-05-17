@@ -36,6 +36,7 @@
 - [x] Unit type/name display above units
 - [x] Basic enemy units (red)
 - [x] Unit attack capabilities (right-click enemy to attack)
+- [x] Expanded unit system: multiple unit types, stats, projectiles, and combat logic
 
 #### Visual Polish
 - [x] Unit movement indicators
@@ -54,6 +55,9 @@
 - [x] Unit attack capabilities
 - [x] Win/lose conditions (Victory/Defeat overlay)
 - [x] Restart button on game over
+- [x] Resource return logic for harvesters (drop-off at refineries)
+- [x] Player starts with a constructed refinery
+- [x] Passive energy credit generation from refineries
 
 #### UI/UX
 - [x] Selected unit stats overlay (bottom left)
@@ -66,8 +70,7 @@
 - [x] Harvester gathers resources over time and displays carried amount in real time
 - [x] Global resource counter overlay (top left)
 - [x] All UI overlays update in real time
-
-- [x] Building construction system (placement, ghost preview, and finalized placement)
+- [x] Building construction system (placement, ghost preview, and finalized placement; currently free for testing)
 - [x] Building visuals improved (metallic/rough material, proper lighting)
 - [x] Building selection and highlight ring
 - [x] Barracks unit production system (UI, queueing, robust overlay, and selection logic)
@@ -80,20 +83,23 @@
 ## Phase 1: Game Mechanics (Next Steps)
 
 ### Suggested Next Steps
-1. **Resource Return Logic**
-   - Implement logic for harvesters to return resources to a base/building
-   - Update global resource counter to reflect banked resources
-2. **Advanced Combat Mechanics**
-   - Add attack animations, projectiles, and more unit types
+1. **Advanced Combat Mechanics**
+   - Add attack animations, more unit types, and advanced abilities
    - Implement basic AI for enemy units
-3. **UI Enhancements**
+2. **UI Enhancements**
    - Expand minimap functionality
    - Add tooltips, hotkeys, and more detailed overlays
-4. **Sound System**
+3. **Sound System**
    - Fix missing or unsupported sound files for in-game events
+4. **Art & Polish**
+   - Replace placeholder models with real assets
+   - Add more visual and audio polish
 
 ### Known Issues
 - SoundManager: NotSupportedError for missing or unsupported sound files (e.g., select.wav)
+- Building costs are currently set to 0 for testing
+- Some UI overlays and minimap are placeholders
+- No advanced AI or campaign scripting yet
 
 ### Technical Debt
 - Consider implementing a proper state management system

@@ -1,49 +1,139 @@
 import * as THREE from 'three';
 import { MovementIndicator } from './MovementIndicator';
+import { ResourceNode } from './ResourceNode';
+import { Building } from './Building';
+
+export enum UnitType {
+  INFANTRY = 'INFANTRY',
+  HARVESTER = 'HARVESTER',
+  TANK = 'TANK',
+  ARTILLERY = 'ARTILLERY',
+  ANTI_AIR = 'ANTI_AIR',
+  SCOUT = 'SCOUT',
+}
+
+export interface UnitStats {
+  health: number;
+  speed: number;
+  attackDamage: number;
+  attackRange: number;
+  attackCooldown: number;
+  cost: number;
+  productionTime: number;
+}
+
+export const UNIT_STATS: Record<UnitType, UnitStats> = {
+  [UnitType.INFANTRY]: {
+    health: 100,
+    speed: 5,
+    attackDamage: 10,
+    attackRange: 2,
+    attackCooldown: 1,
+    cost: 50,
+    productionTime: 10,
+  },
+  [UnitType.HARVESTER]: {
+    health: 80,
+    speed: 4,
+    attackDamage: 0,
+    attackRange: 0,
+    attackCooldown: 0,
+    cost: 100,
+    productionTime: 15,
+  },
+  [UnitType.TANK]: {
+    health: 200,
+    speed: 3,
+    attackDamage: 25,
+    attackRange: 3,
+    attackCooldown: 1.5,
+    cost: 150,
+    productionTime: 20,
+  },
+  [UnitType.ARTILLERY]: {
+    health: 120,
+    speed: 2,
+    attackDamage: 40,
+    attackRange: 8,
+    attackCooldown: 3,
+    cost: 200,
+    productionTime: 25,
+  },
+  [UnitType.ANTI_AIR]: {
+    health: 90,
+    speed: 4,
+    attackDamage: 15,
+    attackRange: 5,
+    attackCooldown: 0.8,
+    cost: 120,
+    productionTime: 15,
+  },
+  [UnitType.SCOUT]: {
+    health: 60,
+    speed: 7,
+    attackDamage: 5,
+    attackRange: 1,
+    attackCooldown: 0.5,
+    cost: 80,
+    productionTime: 8,
+  },
+};
 
 export class Unit {
   private id: number;
   private mesh: THREE.Mesh;
-  private speed: number;
+  private stats: UnitStats;
   private targetPosition: THREE.Vector3 | null = null;
   private isSelected: boolean = false;
   private selectionCircle: THREE.Mesh | null = null;
   private movementIndicator: MovementIndicator;
   private scene: THREE.Scene;
   private camera: THREE.Camera;
-  private health: number = 100;
-  private maxHealth: number = 100;
+  private health: number;
+  private maxHealth: number;
   private healthBarSprite: THREE.Sprite;
   private healthBarCanvas: HTMLCanvasElement;
   private healthBarCtx: CanvasRenderingContext2D | null;
-  private unitType: string = 'Unit';
+  private unitType: UnitType;
   private nameLabel: THREE.Sprite;
-  private attackRange: number = 2;
-  private attackDamage: number = 10;
-  private attackCooldown: number = 1;
-  private lastAttackTime: number = 0;
   private targetUnit: Unit | null = null;
   private isEnemy: boolean = false;
-  private harvestTarget: any = null; // ResourceNode
-  private harvestCooldown: number = 1.0; // seconds per gather
+  private harvestTarget: ResourceNode | null = null;
+  private returnTarget: Building | null = null;
+  private harvestCooldown: number = 1.0;
   private lastHarvestTime: number = 0;
   private carriedResources: number = 0;
+  private maxCarriedResources: number = 100;
+  private harvestRate: number = 50;
+  private onResourceDeposited?: (amount: number) => void;
+  private lastAttackTime: number = 0;
+  private projectilePool: THREE.Mesh[] = [];
+  private maxProjectiles: number = 20;
+  private attackEffect: THREE.Mesh | null = null;
 
-  constructor(id: number, position: THREE.Vector3, scene: THREE.Scene, camera: THREE.Camera, speed: number = 5, unitType: string = 'Unit', isEnemy: boolean = false) {
+  constructor(
+    id: number,
+    position: THREE.Vector3,
+    scene: THREE.Scene,
+    camera: THREE.Camera,
+    unitType: UnitType = UnitType.INFANTRY,
+    isEnemy: boolean = false
+  ) {
     this.id = id;
-    this.speed = speed;
     this.scene = scene;
     this.camera = camera;
     this.unitType = unitType;
     this.isEnemy = isEnemy;
+    this.stats = UNIT_STATS[unitType];
+    this.health = this.stats.health;
+    this.maxHealth = this.stats.health;
 
-    // Create a simple cube mesh for the unit
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    let color = 0x00ff00;
-    if (isEnemy) color = 0xff0000;
-    else if (unitType === 'Harvester') color = 0xffcc00;
-    const material = new THREE.MeshStandardMaterial({ 
-      color: color
+    // Create unit mesh
+    const geometry = this.getUnitGeometry();
+    const material = new THREE.MeshStandardMaterial({
+      color: this.getUnitColor(),
+      metalness: 0.7,
+      roughness: 0.3,
     });
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.position.copy(position);
@@ -60,11 +150,11 @@ export class Unit {
     this.selectionCircle.visible = false;
     this.mesh.add(this.selectionCircle);
 
-    // Create movement indicator and add it to the scene
+    // Create movement indicator
     this.movementIndicator = new MovementIndicator();
     this.scene.add(this.movementIndicator.getMesh());
 
-    // Create health bar sprite (always faces camera)
+    // Create health bar
     this.healthBarCanvas = document.createElement('canvas');
     this.healthBarCanvas.width = 128;
     this.healthBarCanvas.height = 16;
@@ -72,11 +162,11 @@ export class Unit {
     const healthBarTexture = new THREE.CanvasTexture(this.healthBarCanvas);
     const healthBarMaterial = new THREE.SpriteMaterial({ map: healthBarTexture, transparent: true });
     this.healthBarSprite = new THREE.Sprite(healthBarMaterial);
-    this.healthBarSprite.scale.set(1.2, 0.18, 1); // width, height, depth
-    this.healthBarSprite.position.set(0, 1.0, 0); // Above the unit
+    this.healthBarSprite.scale.set(1.2, 0.18, 1);
+    this.healthBarSprite.position.set(0, 1.0, 0);
     this.mesh.add(this.healthBarSprite);
 
-    // Create name label sprite
+    // Create name label
     const nameCanvas = document.createElement('canvas');
     nameCanvas.width = 256;
     nameCanvas.height = 64;
@@ -92,11 +182,129 @@ export class Unit {
       nameCtx.fillText(this.unitType, 128, 32);
     }
     const nameTexture = new THREE.CanvasTexture(nameCanvas);
-    const spriteMat = new THREE.SpriteMaterial({ map: nameTexture, transparent: true });
-    this.nameLabel = new THREE.Sprite(spriteMat);
+    const nameMaterial = new THREE.SpriteMaterial({ map: nameTexture, transparent: true });
+    this.nameLabel = new THREE.Sprite(nameMaterial);
     this.nameLabel.scale.set(2, 0.5, 1);
-    this.nameLabel.position.set(0, 1.3, 0); // Above the health bar
-    this.scene.add(this.nameLabel);
+    this.nameLabel.position.set(0, 1.3, 0);
+    this.mesh.add(this.nameLabel);
+
+    // Initialize projectile pool
+    this.initializeProjectilePool();
+
+    this.updateHealthBar();
+  }
+
+  private getUnitGeometry(): THREE.BufferGeometry {
+    switch (this.unitType) {
+      case UnitType.INFANTRY:
+        return new THREE.BoxGeometry(0.8, 1.2, 0.8);
+      case UnitType.HARVESTER:
+        return new THREE.BoxGeometry(1, 1, 1.5);
+      case UnitType.TANK:
+        return new THREE.BoxGeometry(1.5, 0.8, 2);
+      case UnitType.ARTILLERY:
+        return new THREE.BoxGeometry(1.2, 1, 2);
+      case UnitType.ANTI_AIR:
+        return new THREE.BoxGeometry(1, 1.5, 1);
+      case UnitType.SCOUT:
+        return new THREE.BoxGeometry(0.6, 0.8, 0.6);
+      default:
+        return new THREE.BoxGeometry(1, 1, 1);
+    }
+  }
+
+  private getUnitColor(): number {
+    if (this.isEnemy) return 0xff0000;
+    switch (this.unitType) {
+      case UnitType.INFANTRY:
+        return 0x2196f3;
+      case UnitType.HARVESTER:
+        return 0xffcc00;
+      case UnitType.TANK:
+        return 0x4caf50;
+      case UnitType.ARTILLERY:
+        return 0x9c27b0;
+      case UnitType.ANTI_AIR:
+        return 0xf44336;
+      case UnitType.SCOUT:
+        return 0x00bcd4;
+      default:
+        return 0x808080;
+    }
+  }
+
+  private initializeProjectilePool(): void {
+    const geometry = new THREE.SphereGeometry(0.1, 8, 8);
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    
+    for (let i = 0; i < this.maxProjectiles; i++) {
+      const projectile = new THREE.Mesh(geometry, material);
+      projectile.visible = false;
+      this.scene.add(projectile);
+      this.projectilePool.push(projectile);
+    }
+  }
+
+  private getProjectile(): THREE.Mesh | null {
+    return this.projectilePool.find(p => !p.visible) || null;
+  }
+
+  private fireProjectile(target: THREE.Vector3): void {
+    const projectile = this.getProjectile();
+    if (!projectile) return;
+
+    const startPos = this.mesh.position.clone();
+    startPos.y += 0.5;
+    projectile.position.copy(startPos);
+    projectile.visible = true;
+
+    const direction = target.clone().sub(startPos).normalize();
+    const distance = startPos.distanceTo(target);
+    const speed = 20;
+    const duration = distance / speed;
+
+    const startTime = performance.now();
+    const animate = () => {
+      const elapsed = (performance.now() - startTime) / 1000;
+      if (elapsed >= duration) {
+        projectile.visible = false;
+        return;
+      }
+
+      const progress = elapsed / duration;
+      projectile.position.lerpVectors(startPos, target, progress);
+      requestAnimationFrame(animate);
+    };
+
+    animate();
+  }
+
+  public attack(target: Unit): void {
+    if (!target || target.isDead()) {
+      this.targetUnit = null;
+      return;
+    }
+
+    const now = performance.now() / 1000;
+    if (now - this.lastAttackTime >= this.stats.attackCooldown) {
+      // Fire projectile
+      const targetPos = target.getPosition().clone();
+      targetPos.y += 0.5;
+      this.fireProjectile(targetPos);
+
+      // Deal damage
+      target.takeDamage(this.stats.attackDamage);
+      this.lastAttackTime = now;
+    }
+  }
+
+  public takeDamage(amount: number): void {
+    this.health = Math.max(0, this.health - amount);
+    this.updateHealthBar();
+  }
+
+  public isDead(): boolean {
+    return this.health <= 0;
   }
 
   public getId(): number {
@@ -132,51 +340,75 @@ export class Unit {
     // Update movement indicator
     this.movementIndicator.update(deltaTime);
 
-    // Update health bar and name label positions to follow the unit
+    // Update health bar and name label positions
     const unitPos = this.mesh.position;
-    this.nameLabel.position.set(unitPos.x, unitPos.y + 1.3, unitPos.z);
     this.updateHealthBar();
 
     // Harvester logic
-    if (this.unitType === 'Harvester' && this.harvestTarget) {
-      const dist = this.mesh.position.distanceTo(this.harvestTarget.getPosition());
-      if (dist > 1.5) {
-        // Move toward resource
-        const direction = this.harvestTarget.getPosition().clone().sub(this.mesh.position);
-        direction.normalize();
-        const movement = direction.multiplyScalar(this.speed * deltaTime);
-        this.mesh.position.add(movement);
-      } else if (!this.harvestTarget.isDepleted()) {
-        // In range, gather resources
-        const now = performance.now() / 1000;
-        if (now - this.lastHarvestTime >= this.harvestCooldown) {
-          const gathered = this.harvestTarget.harvest(50); // Gather 50 per tick
-          this.carriedResources += gathered;
-          this.lastHarvestTime = now;
+    if (this.unitType === UnitType.HARVESTER) {
+      if (this.harvestTarget && this.carriedResources < this.maxCarriedResources) {
+        const dist = this.mesh.position.distanceTo(this.harvestTarget.getPosition());
+        if (dist > 1.5) {
+          // Move toward resource
+          const direction = this.harvestTarget.getPosition().clone().sub(this.mesh.position);
+          direction.normalize();
+          const movement = direction.multiplyScalar(this.stats.speed * deltaTime);
+          this.mesh.position.add(movement);
+        } else if (!this.harvestTarget.isDepleted()) {
+          // In range, gather resources
+          const now = performance.now() / 1000;
+          if (now - this.lastHarvestTime >= this.harvestCooldown) {
+            const gathered = this.harvestTarget.harvest(this.harvestRate);
+            this.carriedResources += gathered;
+            this.lastHarvestTime = now;
+            
+            // If full or resource depleted, start returning
+            if (this.carriedResources >= this.maxCarriedResources || this.harvestTarget.isDepleted()) {
+              this.harvestTarget = null;
+              if (this.returnTarget && this.returnTarget.mesh) {
+                this.moveTo(this.returnTarget.mesh.position);
+              }
+            }
+          }
+        } else {
+          this.harvestTarget = null;
         }
-      }
-      if (this.harvestTarget.isDepleted()) {
-        this.harvestTarget = null;
+      } else if (this.returnTarget && this.carriedResources > 0) {
+        const dist = this.mesh.position.distanceTo(this.returnTarget.mesh.position);
+        if (dist > 1.5) {
+          // Move toward return target
+          const direction = this.returnTarget.mesh.position.clone().sub(this.mesh.position);
+          direction.normalize();
+          const movement = direction.multiplyScalar(this.stats.speed * deltaTime);
+          this.mesh.position.add(movement);
+        } else {
+          // Deposit resources
+          if (this.onResourceDeposited) {
+            this.onResourceDeposited(this.carriedResources);
+          }
+          this.carriedResources = 0;
+          
+          // Return to harvesting if there's a target
+          if (this.harvestTarget) {
+            this.moveTo(this.harvestTarget.getPosition());
+          }
+        }
       }
       return;
     }
 
-    // Handle movement and attacking
+    // Combat logic
     if (this.targetUnit) {
       const distanceToTarget = this.mesh.position.distanceTo(this.targetUnit.getPosition());
       
-      if (distanceToTarget <= this.attackRange) {
+      if (distanceToTarget <= this.stats.attackRange) {
         // In range, attack if cooldown is ready
-        const currentTime = performance.now() / 1000;
-        if (currentTime - this.lastAttackTime >= this.attackCooldown) {
-          this.attack(this.targetUnit);
-          this.lastAttackTime = currentTime;
-        }
+        this.attack(this.targetUnit);
       } else {
         // Move towards target
         const direction = this.targetUnit.getPosition().clone().sub(this.mesh.position);
         direction.normalize();
-        const movement = direction.multiplyScalar(this.speed * deltaTime);
+        const movement = direction.multiplyScalar(this.stats.speed * deltaTime);
         this.mesh.position.add(movement);
       }
     } else if (this.targetPosition) {
@@ -185,7 +417,7 @@ export class Unit {
 
       if (distance > 0.1) {
         direction.normalize();
-        const movement = direction.multiplyScalar(this.speed * deltaTime);
+        const movement = direction.multiplyScalar(this.stats.speed * deltaTime);
         this.mesh.position.add(movement);
       } else {
         this.targetPosition = null;
@@ -228,12 +460,15 @@ export class Unit {
     this.healthBarSprite.visible = true;
   }
 
-  public setUnitType(type: string): void {
+  public setUnitType(type: UnitType): void {
     this.unitType = type;
+    this.stats = UNIT_STATS[type];
+    this.health = this.stats.health;
+    this.maxHealth = this.stats.health;
     this.updateNameLabel();
   }
 
-  public getUnitType(): string {
+  public getUnitType(): UnitType {
     return this.unitType;
   }
 
@@ -258,49 +493,45 @@ export class Unit {
     }
   }
 
-  public attack(target: Unit): void {
-    if (target) {
-      target.takeDamage(this.attackDamage);
-    }
-  }
-
-  public takeDamage(amount: number): void {
-    this.health = Math.max(0, this.health - amount);
-    this.updateHealthBar();
-  }
-
   public setTarget(target: Unit | null): void {
     this.targetUnit = target;
     this.targetPosition = null; // Clear movement target when attacking
   }
 
   public cleanup(): void {
-    // Remove all meshes from scene
-    this.scene.remove(this.healthBarSprite);
-    this.scene.remove(this.nameLabel);
-    this.scene.remove(this.movementIndicator.getMesh());
+    // Clean up projectiles
+    this.projectilePool.forEach(projectile => {
+      this.scene.remove(projectile);
+      projectile.geometry.dispose();
+      (projectile.material as THREE.Material).dispose();
+    });
+
+    // Clean up other resources
     this.scene.remove(this.mesh);
-    
-    // Dispose of health bar sprite material/texture
-    (this.healthBarSprite.material as THREE.SpriteMaterial).map?.dispose();
-    this.healthBarSprite.material.dispose();
-    this.nameLabel.material.dispose();
+    this.scene.remove(this.movementIndicator.getMesh());
+    this.healthBarCanvas.remove();
     this.mesh.geometry.dispose();
     (this.mesh.material as THREE.Material).dispose();
-  }
-
-  public isDead(): boolean {
-    return this.health <= 0;
   }
 
   public getIsEnemy(): boolean {
     return this.isEnemy;
   }
 
-  public setHarvestTarget(resourceNode: any) {
+  public setHarvestTarget(resourceNode: ResourceNode) {
     this.harvestTarget = resourceNode;
-    this.targetUnit = null;
-    this.targetPosition = resourceNode ? resourceNode.getPosition().clone() : null;
+    this.returnTarget = null; // Clear return target when starting new harvest
+    if (resourceNode) {
+      this.moveTo(resourceNode.getPosition());
+    }
+  }
+
+  public setReturnTarget(building: Building) {
+    this.returnTarget = building;
+  }
+
+  public setOnResourceDeposited(callback: (amount: number) => void) {
+    this.onResourceDeposited = callback;
   }
 
   public getCarriedResources(): number {
